@@ -1,16 +1,12 @@
-﻿const searchBtn = document.getElementById('searchBtn');
-const searchStatus = document.getElementById('searchStatus');
-const sideStatus = document.getElementById('sideStatus');
-const resultList = document.getElementById('resultList');
-
-function updateSearchStatus(msg, isError = false) {
-  searchStatus.textContent = msg;
-  searchStatus.style.color = isError ? '#ff5d73' : '#8fb2d5';
+﻿window.onload = async _ => {
+  document.getElementById('searchBtn').addEventListener('click', searchMapping);
+  document.getElementById('api-version').innerHTML = 'Backend v' + await fetch('/api').then(res => res.json()).then(json => json.version)
 }
 
-function updateSideStatus(msg, isError = false) {
-  sideStatus.textContent = msg;
-  sideStatus.style.color = isError ? '#ff5d73' : '#8fb2d5';
+function updateSearchStatus(msg, isError = false) {
+  const searchStatus = document.getElementById('searchStatus');
+  searchStatus.textContent = msg;
+  searchStatus.style.color = isError ? '#ff5d73' : '#8fb2d5';
 }
 
 function toSlashClass(className) {
@@ -18,13 +14,11 @@ function toSlashClass(className) {
   return className.includes('/') ? className : className.replace(/\./g, '/');
 }
 
-async function copyText(value, label) {
+async function copyText(value) {
   if (!value) return;
   try {
     await navigator.clipboard.writeText(value);
-    updateSideStatus(`已复制 ${label}`);
   } catch (e) {
-    updateSideStatus(`复制失败: ${e.message}`, true);
   }
 }
 
@@ -44,20 +38,40 @@ async function fetchSourceText(version, mappingType, classPath) {
   throw new Error(`${response.status} ${await response.text()}`);
 }
 
+function buildAT(named) {
+  switch (named.Type) {
+    case 'class': return `public ${named.Class}`
+    case 'method': return `public ${named.Class} ${named.Name}${named.Signature}`
+    case 'field': return `public ${named.Class} ${named.Name}`
+  }
+  return 'Unknown Type'
+}
+
+function buildAW(named) {
+  const classSignature = named.Signature.substring(1)
+  switch (named.Type) {
+    case 'class': return `accessible class ${classSignature}`
+    case 'method': return `accessible method L${named.Class.replaceAll('.', '/')}; ${named.Name} ${named.Signature}`
+    case 'field': return `accessible field ${classSignature} ${named.Name} ${named.Signature}`
+  }
+  return 'Unknown Type'
+}
+
 function renderResultCard(item, index, version, mappingType) {
   const named = item.Named || item.named || {};
   const notch = item.Notch || item.notch || {};
-  const translated = item.Translated || item.translated || {};
-  const mainName = named.Name || notch.Name || '';
+
+  // const translated = item.Translated || item.translated || {};
   const mainClass = named.Class || notch.Class || '';
-  const mainType = (named.Type || notch.Type || translated.Type || 'unknown').toLowerCase();
-  const signature = named.Signature || notch.Signature || '';
+  const mainType = (named.Type || 'unknown').toLowerCase();
+  const signature = named.Signature || '';
   const classPath = toSlashClass(mainClass);
+  const namedAT = buildAT(named), namedAW = buildAW(named)
 
   const card = document.createElement('article');
   card.className = 'result-card';
   card.innerHTML = `
-    <h3><span>${mainName}</span><image src="copy-icon.svg" class="copy-btn-big"></image><span class="badge-type">${mainType}</span><image src="source-icon.svg" class="source-btn"></image></h3>
+    <h3><span>${named.Name}</span><image src="copy-icon.svg" class="copy-btn-big"></image><span class="badge-type">${mainType}</span><image src="source-icon.svg" class="source-btn"></image></h3>
     <div class="row">
       <span class="value">${notch.Name || '-'}</span>&nbsp;<image src="copy-icon.svg" class="copy-btn"></image>
       <span class="key">></span>
@@ -65,16 +79,24 @@ function renderResultCard(item, index, version, mappingType) {
     </div><br>
     <div class="row">
       <span class="key">签名：</span><span class="value">${signature || '-'}</span>&nbsp;<image src="copy-icon.svg" class="copy-btn">
+    </div><br>
+    <div class="row">
+      <span class="key">AT：</span><span class="value">${namedAT || '-'}</span>&nbsp;<image src="copy-icon.svg" class="copy-btn">
+    </div><br>
+    <div class="row">
+      <span class="key">AW：</span><span class="value">${namedAW || '-'}</span>&nbsp;<image src="copy-icon.svg" class="copy-btn">
     </div>
     <div class="source-expanded hidden"><pre class="line-numbers" data-src="${getSourceUrl(version, mappingType, classPath)}" data-download-link><code class="language-java">未加载</code></pre></div>
   `;
 
   const [copyMainName] = card.querySelectorAll('.copy-btn-big');
-  const [copyNotch, copyNamed, copySignature] = card.querySelectorAll('.copy-btn');
-  copyMainName.addEventListener('click', () => copyText(mainName || '', 'Named'));
-  copyNotch.addEventListener('click', () => copyText(notch.Name || '', 'Notch'));
-  copyNamed.addEventListener('click', () => copyText(named.Name || '', 'Named'));
-  copySignature.addEventListener('click', () => copyText(signature, '签名'));
+  const [copyNotch, copyNamed, copySignature, copyAT, copyAW] = card.querySelectorAll('.copy-btn');
+  copyMainName.addEventListener('click', () => copyText(named.Name || ''));
+  copyNotch.addEventListener('click', () => copyText(notch.Name || ''));
+  copyNamed.addEventListener('click', () => copyText(named.Name || ''));
+  copySignature.addEventListener('click', () => copyText(signature));
+  copyAT.addEventListener('click', () => copyText(namedAT));
+  copyAW.addEventListener('click', () => copyText(namedAW));
 
   const sourceBtn = card.querySelector('.source-btn');
   const sourceBlock = card.querySelector('.source-expanded');
@@ -108,6 +130,8 @@ function renderResultCard(item, index, version, mappingType) {
 }
 
 async function searchMapping() {
+  const resultList = document.getElementById('resultList');
+
   const version = document.querySelector('#version').value.trim();
   const mappingType = document.querySelector('#mappingType').value;
   const translateType = document.querySelector('#translateType').value;
@@ -122,7 +146,6 @@ async function searchMapping() {
   }
 
   updateSearchStatus('正在查询...');
-  updateSideStatus('请求中...');
   resultList.innerHTML = '';
 
   try {
@@ -160,10 +183,7 @@ async function searchMapping() {
     });
 
     updateSearchStatus(`共 ${filtered.length} 条结果`);
-    updateSideStatus('查询成功');
   } catch (err) {
     updateSearchStatus(`查询异常：${err.message}`, true);
   }
 }
-
-searchBtn.addEventListener('click', searchMapping);

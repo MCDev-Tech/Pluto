@@ -7,6 +7,7 @@
   <title>Pluto MC 映射查询</title>
   <link rel="stylesheet" href="prism.css">
   <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="favicon.webp">
 </head>
 
 <body>
@@ -14,9 +15,11 @@
     <main class="main-layout">
       <aside class="left-menu">
         <div class="top-brand">
+          <image src="favicon.webp" style="width:32px;"></image>
+          &nbsp;&nbsp;
           <h1>Pluto 映射查询</h1>
-          <p id="api-version"></p>
         </div>
+        <div id="api-version" class="key"></div>
 
         <div class="menu-group">
           <small>版本</small>
@@ -62,7 +65,6 @@
           <small>关键词搜索</small>
           <input id="keyword" type="text" placeholder="搜索关键词" spellcheck="false" />
           <button id="searchBtn" class="btn primary">搜索</button>
-          <div id="sideStatus" class="status">等待查询</div>
         </div>
       </aside>
 

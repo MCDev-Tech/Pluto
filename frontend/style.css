@@ -49,7 +49,12 @@ body {
   gap: 14px;
 }
 
+.top-brand {
+  display: flex;
+}
+
 .top-brand h1 {
+  user-select: none;
   margin: 0;
   font-size: 1.5rem;
   letter-spacing: 0.03em;
@@ -82,11 +87,12 @@ body {
 }
 
 .btn.primary {
-  color: #041c2d;
-  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  color: white;
   border-color: transparent;
   font-weight: 700;
   margin: 10px 0;
+  border: 1px solid var(--border);
+  cursor: pointer;
 }
 
 .status {
@@ -133,7 +139,7 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 1.03rem;
+  font-size: 1.25rem;
 }
 
 .badge-type {
@@ -160,7 +166,7 @@ body {
 
 .value {
   color: var(--text);
-  font-size: .9rem;
+  font-size: 1rem;
   overflow-wrap: anywhere;
 }
 

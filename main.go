@@ -1,6 +1,7 @@
 package main
 
 import (
+	"embed"
 	"flag"
 	"log"
 	"log/slog"
@@ -9,6 +10,9 @@ import (
 	"pluto/util"
 	"pluto/webserver"
 )
+
+//go:embed frontend/*
+var frontendFS embed.FS
 
 func main() {
 	//Params
@@ -33,7 +37,7 @@ func main() {
 		global.CheckLibrary()
 	}
 	//Main Logic
-	err = webserver.Launch()
+	err = webserver.Launch(frontendFS)
 	if err != nil {
 		log.Fatal(err)
 	}
