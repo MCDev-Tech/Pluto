@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"log/slog"
 	"os"
@@ -11,6 +12,10 @@ import (
 )
 
 func main() {
+	//Params
+	skipLibraryCheck := flag.Bool("skiplibrary", false, "Skip Library Check")
+	flag.Parse()
+	//Main
 	defer util.CloseWorkers()
 	util.InitLogger()
 	slog.Info("Launching Pluto v" + global.Version)
@@ -29,7 +34,9 @@ func main() {
 		log.Fatal(err)
 	}
 	//Libraries
-	global.CheckLibrary()
+	if !*skipLibraryCheck {
+		global.CheckLibrary()
+	}
 	//Main Logic
 	err = webserver.Launch()
 	if err != nil {

@@ -1,15 +1,45 @@
 package webserver
 
 import (
-	"github.com/gin-gonic/gin"
 	"net/http"
 	"os"
-	"path/filepath"
-	"pluto/global"
 	"pluto/mapping"
 	"pluto/util"
+	"strings"
 	"time"
+
+	"github.com/gin-gonic/gin"
 )
+
+func handleSourceGet(c *gin.Context) {
+	mcVersion, mappingType, class := c.Query("version"), c.Query("type"), c.Query("class")
+	if mcVersion == "" || mappingType == "" || class == "" {
+		c.String(http.StatusBadRequest, "Missing query parameter(s)")
+		return
+	}
+
+	class = strings.TrimSpace(class)
+	class = strings.Trim(class, "/")
+	class = strings.ReplaceAll(class, ".", "/")
+
+	targetPath, err := mapping.GenerateSourceForClass(mcVersion, mappingType, class)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Generate single class source failed: "+err.Error())
+		return
+	}
+
+	if _, err := os.Stat(targetPath); os.IsNotExist(err) {
+		c.String(http.StatusNotFound, "")
+		return
+	}
+
+	content, err := os.ReadFile(targetPath)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Failed to read file")
+		return
+	}
+	c.Data(http.StatusOK, "text/plain; charset=utf-8", content)
+}
 
 func initSourceApi(g *gin.RouterGroup) {
 	g.GET("/source/decompile", RateLimiterMiddleware(10*time.Second, 2), func(c *gin.Context) {
@@ -32,27 +62,5 @@ func initSourceApi(g *gin.RouterGroup) {
 		})
 		c.String(http.StatusAccepted, "Started decompiling, please wait")
 	})
-	g.GET("/source/get", RateLimiterMiddleware(2*time.Second, 5), func(c *gin.Context) {
-		mcVersion, mappingType, class := c.Query("version"), c.Query("type"), c.Query("class")
-		if mcVersion == "" || mappingType == "" || class == "" {
-			c.String(http.StatusBadRequest, "Missing query parameter(s)")
-			return
-		}
-		if !mapping.IsAvailable(mcVersion, mappingType) {
-			c.String(http.StatusPreconditionFailed, "Use /load before getting")
-			return
-		}
-		path := global.GetSourceFolder(global.NamedImpl{Name: mappingType}, mcVersion)
-		targetPath := filepath.Join(path, class+".java")
-		if _, err := os.Stat(targetPath); os.IsNotExist(err) {
-			c.String(http.StatusNotFound, "")
-			return
-		}
-		content, err := os.ReadFile(targetPath)
-		if err != nil {
-			c.String(http.StatusInternalServerError, "Failed to read file")
-			return
-		}
-		c.Data(http.StatusOK, "text/plain; charset=utf-8", content)
-	})
+	g.GET("/source/get", RateLimiterMiddleware(2*time.Second, 5), handleSourceGet)
 }

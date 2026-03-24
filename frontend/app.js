@@ -1,46 +1,129 @@
-const searchBtn = document.querySelector('#searchBtn');
-const status = document.querySelector('#searchStatus');
+﻿const searchBtn = document.querySelector('#searchBtn');
+const searchStatus = document.querySelector('#searchStatus');
 const sideStatus = document.querySelector('#sideStatus');
-const resultBody = document.querySelector('#resultTable tbody');
-const sourceResult = document.querySelector('#sourceResult code');
+const resultList = document.querySelector('#resultList');
 
-window.addEventListener('load', async _ => {
-  document.getElementById('api-version').innerText = `Backend Version: ${await fetch('/api/version').then(res => res.json()).then(json => json.version ?? 'Unknown')}`
-})
-
-function updateStatus(msg, isError = false) {
-  status.textContent = msg;
-  status.style.color = isError ? '#ff8a9a' : '#b7d4ff';
+function updateSearchStatus(msg, isError = false) {
+  searchStatus.textContent = msg;
+  searchStatus.style.color = isError ? '#ff5d73' : '#8fb2d5';
 }
 
 function updateSideStatus(msg, isError = false) {
   sideStatus.textContent = msg;
-  sideStatus.style.color = isError ? '#ff9898' : '#9acdf6';
+  sideStatus.style.color = isError ? '#ff5d73' : '#8fb2d5';
 }
 
-function buildRow(item, index, version, mappingType, translateType) {
-  const tr = document.createElement('tr');
-  tr.innerHTML = `
-    <td>${index + 1}</td>
-    <td>${item.notch.Type || item.named.Type || item.translated?.Type || 'unknown'}</td>
-    <td title="Notch: ${item.notch.Name}">${item.notch.Name}</td>
-    <td title="Named: ${item.named.Name}">${item.named.Name}</td>
-    <td>${item.notch.Class || item.Named.Class || ''}</td>
-    <td>${item.notch.Signature || item.Named.Signature || ''}</td>
-    <td><button class="small-btn" data-class="${encodeURIComponent(item.notch.Class || item.named.Class || '')}" data-type="${item.notch.Type || item.named.Type || ''}">查看源码</button></td>
+function toSlashClass(className) {
+  if (!className) return '';
+  return className.includes('/') ? className : className.replace(/\./g, '/');
+}
+
+async function copyText(value, label) {
+  if (!value) return;
+  try {
+    await navigator.clipboard.writeText(value);
+    updateSideStatus(`已复制 ${label}`);
+  } catch (e) {
+    updateSideStatus(`复制失败: ${e.message}`, true);
+  }
+}
+
+async function fetchSourceText(version, mappingType, classPath) {
+  const toUrl = (path) => {
+    const url = new URL(path, window.location.origin);
+    url.searchParams.set('version', version);
+    url.searchParams.set('type', mappingType);
+    url.searchParams.set('class', classPath);
+    return url;
+  };
+  const getSource = async () => fetch(toUrl('/api/source/get'));
+
+  let response = await getSource();
+  if (response.ok) return await response.text();
+
+  if (response.status !== 404 && response.status !== 412) {
+    throw new Error(`${response.status} ${await response.text()}`);
+  }
+
+  const decompileResp = await fetch(toUrl('/api/source/decompile'));
+  if (!decompileResp.ok && decompileResp.status !== 202) {
+    throw new Error(`decompile failed: ${decompileResp.status} ${await decompileResp.text()}`);
+  }
+
+  let retries = 15;
+  while (retries-- > 0) {
+    await new Promise((r) => setTimeout(r, 2200));
+    response = await getSource();
+    if (response.ok) {
+      return await response.text();
+    }
+    if (response.status !== 404 && response.status !== 412) {
+      throw new Error(`${response.status} ${await response.text()}`);
+    }
+  }
+  throw new Error('超时未生成源码，请稍后重试');
+}
+
+function renderResultCard(item, index, version, mappingType) {
+  const named = item.Named || item.named || {};
+  const notch = item.Notch || item.notch || {};
+  const translated = item.Translated || item.translated || {};
+  const mainName = named.Name || notch.Name || '';
+  const mainClass = named.Class || notch.Class || '';
+  const mainType = (named.Type || notch.Type || translated.Type || 'unknown').toLowerCase();
+  const signature = named.Signature || notch.Signature || '';
+  const classPath = toSlashClass(mainClass);
+
+  const card = document.createElement('article');
+  card.className = 'result-card';
+  card.innerHTML = `
+    <h3>${mainName} <span class="badge-type">${mainType}</span></h3>
+    <div class="row"><div class="key">Named</div><div class="value">${named.Name || '-'}</div><button class="copy-btn">复制 Named</button></div>
+    <div class="row"><div class="key">Notch</div><div class="value">${notch.Name || '-'}</div><button class="copy-btn">复制 Notch</button></div>
+    <div class="row"><div class="key">类</div><div class="value">${mainClass || '-'}</div><button class="copy-btn">复制 类</button></div>
+    <div class="row"><div class="key">签名</div><div class="value">${signature || '-'}</div><button class="copy-btn">复制 签名</button></div>
+    <div class="row"><div class="key">AW</div><div class="value">${notch.Name || '-'}</div><button class="copy-btn">复制 AW</button></div>
+    <div class="row"><div class="key">AT</div><div class="value">${named.Name || '-'}</div><button class="copy-btn">复制 AT</button></div>
+    <div class="row"><button class="copy-btn">复制 翻译</button><button class="source-btn">查看源码</button></div>
+    <div class="source-expanded hidden"><pre>未加载</pre></div>
   `;
 
-  const viewBtn = tr.querySelector('button');
-  viewBtn.addEventListener('click', () => {
-    const className = decodeURIComponent(viewBtn.dataset.class);
-    if (!className) {
-      updateSideStatus('没有可用类路径，用 Notch.Class 或 Named.Class', true);
+  const [copyNamed, copyNotch, copyClass, copySignature, copyAw, copyAt, copyTranslated] = card.querySelectorAll('.copy-btn');
+  copyNamed.addEventListener('click', () => copyText(named.Name || '', 'Named'));
+  copyNotch.addEventListener('click', () => copyText(notch.Name || '', 'Notch'));
+  copyClass.addEventListener('click', () => copyText(mainClass, '类'));
+  copySignature.addEventListener('click', () => copyText(signature, '签名'));
+  copyAw.addEventListener('click', () => copyText(notch.Name || '', 'AW'));
+  copyAt.addEventListener('click', () => copyText(named.Name || '', 'AT'));
+  copyTranslated.addEventListener('click', () => copyText(translated.Name || '', '翻译'));
+
+  const sourceBtn = card.querySelector('.source-btn');
+  const sourceBlock = card.querySelector('.source-expanded');
+  const sourcePre = sourceBlock.querySelector('pre');
+
+  sourceBtn.addEventListener('click', async () => {
+    if (!classPath) {
+      sourcePre.textContent = '无可用类路径';
+      sourceBlock.classList.remove('hidden');
       return;
     }
-    loadSource(version, mappingType, className);
+
+    if (!sourceBlock.classList.contains('hidden')) {
+      sourceBlock.classList.add('hidden');
+      return;
+    }
+
+    sourceBlock.classList.remove('hidden');
+    sourcePre.textContent = '加载中...';
+    try {
+      const sourceText = await fetchSourceText(version, mappingType, classPath);
+      sourcePre.textContent = sourceText || '源码为空';
+    } catch (err) {
+      sourcePre.textContent = `错误：${err.message}`;
+    }
   });
 
-  return tr;
+  return card;
 }
 
 async function searchMapping() {
@@ -53,13 +136,13 @@ async function searchMapping() {
   const showField = document.querySelector('#filterField').checked;
 
   if (!version || !mappingType || keyword.length < 3) {
-    updateStatus('版本、类型与关键字（至少 3 字）为必填'.toString(), true);
+    updateSearchStatus('MC版本、命名空间 和 关键字（最少3字符）为必填', true);
     return;
   }
 
-  updateStatus('正在查询，请稍候...');
-  sideStatus.textContent = '展示源代码进度请在结果中点击。';
-  resultBody.innerHTML = '';
+  updateSearchStatus('正在查询...');
+  updateSideStatus('请求中...');
+  resultList.innerHTML = '';
 
   try {
     const url = new URL('/api/mapping/search', window.location.origin);
@@ -70,16 +153,16 @@ async function searchMapping() {
       url.searchParams.set('translate', translateType);
     }
 
-    const response = await fetch(url.toString());
+    const response = await fetch(url);
     if (!response.ok) {
       const text = await response.text();
-      updateStatus(`查询失败：${response.status} ${text}`, true);
+      updateSearchStatus(`查询失败 ${response.status}: ${text}`, true);
       return;
     }
 
     const results = await response.json();
-    const filtered = results.filter(item => {
-      const t = (item.Notch && item.Notch.Type) || (item.Named && item.Named.Type) || '';
+    const filtered = results.filter((item) => {
+      const t = ((item.Named && item.Named.Type) || (item.Notch && item.Notch.Type) || '').toLowerCase();
       if (t === 'class' && !showClass) return false;
       if (t === 'method' && !showMethod) return false;
       if (t === 'field' && !showField) return false;
@@ -87,82 +170,19 @@ async function searchMapping() {
     });
 
     if (!filtered.length) {
-      updateStatus('未找到符合筛选条件的结果', false);
+      updateSearchStatus('未找到结果');
       return;
     }
 
     filtered.forEach((item, index) => {
-      resultBody.appendChild(buildRow(item, index, version, mappingType, translateType));
+      resultList.appendChild(renderResultCard(item, index, version, mappingType));
     });
-    updateStatus(`已找到 ${filtered.length} 条结果`);
+
+    updateSearchStatus(`共 ${filtered.length} 条结果`);
+    updateSideStatus('可点击查看源码在卡片下展开');
   } catch (err) {
-    updateStatus(`查询异常：${err.message}`, true);
+    updateSearchStatus(`查询异常：${err.message}`, true);
   }
-}
-
-async function loadSource(version, mappingType, clazz) {
-  sourceResult.textContent = '';
-  updateSideStatus(`请求源代码: ${clazz}`);
-
-  const fetchSource = async () => {
-    const url = new URL('/api/source/get', window.location.origin);
-    url.searchParams.set('version', version);
-    url.searchParams.set('type', mappingType);
-    url.searchParams.set('class', clazz);
-    return fetch(url.toString());
-  };
-
-  const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-
-  let resp = await fetchSource();
-
-  if (resp.status === 412 || resp.status === 404) {
-    updateSideStatus('源代码尚未准备，触发编译并等待结果...');
-
-    const decompileUrl = new URL('/api/source/decompile', window.location.origin);
-    decompileUrl.searchParams.set('version', version);
-    decompileUrl.searchParams.set('type', mappingType);
-    const decompileResp = await fetch(decompileUrl.toString());
-
-    if (!decompileResp.ok && decompileResp.status !== 202) {
-      const text = await decompileResp.text();
-      updateSideStatus(`decompile 失败: ${decompileResp.status} ${text}`, true);
-      return;
-    }
-
-    let maxRetry = 15;
-    while (maxRetry > 0) {
-      await sleep(2200);
-      const polling = await fetchSource();
-      if (polling.status === 200) {
-        resp = polling;
-        break;
-      }
-      if (polling.status === 404 || polling.status === 412) {
-        maxRetry -= 1;
-        updateSideStatus(`源代码准备中，剩余重试 ${maxRetry}`);
-        continue;
-      }
-      const text = await polling.text();
-      updateSideStatus(`获取失败：${polling.status} ${text}`, true);
-      return;
-    }
-
-    if (maxRetry <= 0) {
-      updateSideStatus('源代码获取超时，请稍后再试。', true);
-      return;
-    }
-  }
-
-  if (!resp.ok) {
-    const text = await resp.text();
-    updateSideStatus(`获取源代码失败：${resp.status} ${text}`, true);
-    return;
-  }
-
-  const code = await resp.text();
-  sourceResult.textContent = code || '源代码为空。';
-  updateSideStatus('源代码加载完成。');
 }
 
 searchBtn.addEventListener('click', searchMapping);
