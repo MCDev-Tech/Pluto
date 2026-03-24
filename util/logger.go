@@ -1,11 +1,13 @@
 package util
 
 import (
-	"github.com/lmittmann/tint"
+	"context"
 	"log/slog"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/lmittmann/tint"
 )
 
 type SlogWriter struct {
@@ -13,7 +15,7 @@ type SlogWriter struct {
 }
 
 func (s *SlogWriter) Write(p []byte) (n int, err error) {
-	Logger.Log(nil, s.Level, strings.Trim(string(p), "\n\r "))
+	Logger.Log(context.Background(), s.Level, strings.Trim(string(p), "\n\r "))
 	return len(p), nil
 }
 

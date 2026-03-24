@@ -13,8 +13,8 @@ func normalizeClassPath(classPath string) string {
 	classPath = strings.TrimSpace(classPath)
 	classPath = strings.Trim(classPath, "/")
 	classPath = strings.ReplaceAll(classPath, ".", "/")
-	if strings.HasSuffix(classPath, ".class") {
-		classPath = strings.TrimSuffix(classPath, ".class")
+	if before, ok :=strings.CutSuffix(classPath, ".class"); ok  {
+		classPath = before
 	}
 	return classPath
 }

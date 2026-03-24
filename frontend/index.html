@@ -5,12 +5,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pluto MC 映射查询</title>
+  <link rel="stylesheet" href="prism.css">
   <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
   <div class="app-shell">
-    <main class="linkie-layout">
+    <main class="main-layout">
       <aside class="left-menu">
         <div class="top-brand">
           <h1>Pluto 映射查询</h1>
@@ -46,14 +47,20 @@
 
         <div class="menu-group">
           <small>筛选元素</small>
-          <label><input type="checkbox" id="filterClass" checked /> 类</label>
-          <label><input type="checkbox" id="filterMethod" checked /> 方法</label>
-          <label><input type="checkbox" id="filterField" checked /> 字段</label>
+          <label><input type="checkbox" id="filterClass" checked />
+            <div style="white-space:nowrap;">类</div>&nbsp;&nbsp;&nbsp;
+          </label>
+          <label><input type="checkbox" id="filterMethod" checked />
+            <div style="white-space:nowrap;">方法</div>&nbsp;
+          </label>
+          <label><input type="checkbox" id="filterField" checked />
+            <div style="white-space:nowrap;">字段</div>&nbsp;
+          </label>
         </div>
 
         <div class="menu-group">
           <small>关键词搜索</small>
-          <input id="keyword" type="text" placeholder="搜索关键词，例如 ItemProperties" spellcheck="false" />
+          <input id="keyword" type="text" placeholder="搜索关键词" spellcheck="false" />
           <button id="searchBtn" class="btn primary">搜索</button>
           <div id="sideStatus" class="status">等待查询</div>
         </div>
@@ -66,6 +73,7 @@
     </main>
   </div>
 
+  <script src="prism.js"></script>
   <script src="app.js"></script>
 </body>
 

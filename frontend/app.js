@@ -85,7 +85,7 @@ function renderResultCard(item, index, version, mappingType) {
     <div class="row"><div class="key">AW</div><div class="value">${notch.Name || '-'}</div><button class="copy-btn">复制 AW</button></div>
     <div class="row"><div class="key">AT</div><div class="value">${named.Name || '-'}</div><button class="copy-btn">复制 AT</button></div>
     <div class="row"><button class="copy-btn">复制 翻译</button><button class="source-btn">查看源码</button></div>
-    <div class="source-expanded hidden"><pre>未加载</pre></div>
+    <div class="source-expanded hidden"><pre class="line-numbers"><code class="language-java">未加载</code></pre></div>
   `;
 
   const [copyNamed, copyNotch, copyClass, copySignature, copyAw, copyAt, copyTranslated] = card.querySelectorAll('.copy-btn');
@@ -99,11 +99,11 @@ function renderResultCard(item, index, version, mappingType) {
 
   const sourceBtn = card.querySelector('.source-btn');
   const sourceBlock = card.querySelector('.source-expanded');
-  const sourcePre = sourceBlock.querySelector('pre');
+  const sourceCode = sourceBlock.querySelector('code');
 
   sourceBtn.addEventListener('click', async () => {
     if (!classPath) {
-      sourcePre.textContent = '无可用类路径';
+      sourceCode.textContent = '无可用类路径';
       sourceBlock.classList.remove('hidden');
       return;
     }
@@ -114,12 +114,14 @@ function renderResultCard(item, index, version, mappingType) {
     }
 
     sourceBlock.classList.remove('hidden');
-    sourcePre.textContent = '加载中...';
+    sourceCode.textContent = '加载中...';
     try {
       const sourceText = await fetchSourceText(version, mappingType, classPath);
-      sourcePre.textContent = sourceText || '源码为空';
+      sourceCode.textContent = sourceText || '源码为空';
+      //Apply highlight
+      Prism.highlightAll();
     } catch (err) {
-      sourcePre.textContent = `错误：${err.message}`;
+      sourceCode.textContent = `错误：${err.message}`;
     }
   });
 
