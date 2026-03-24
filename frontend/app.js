@@ -1,7 +1,7 @@
-﻿const searchBtn = document.querySelector('#searchBtn');
-const searchStatus = document.querySelector('#searchStatus');
-const sideStatus = document.querySelector('#sideStatus');
-const resultList = document.querySelector('#resultList');
+﻿const searchBtn = document.getElementById('searchBtn');
+const searchStatus = document.getElementById('searchStatus');
+const sideStatus = document.getElementById('sideStatus');
+const resultList = document.getElementById('resultList');
 
 function updateSearchStatus(msg, isError = false) {
   searchStatus.textContent = msg;
@@ -28,40 +28,20 @@ async function copyText(value, label) {
   }
 }
 
+function getSourceUrl(version, mappingType, classPath) {
+  const url = new URL('/api/source/get', window.location.origin);
+  url.searchParams.set('version', version);
+  url.searchParams.set('type', mappingType);
+  url.searchParams.set('class', classPath);
+  return url;
+}
+
 async function fetchSourceText(version, mappingType, classPath) {
-  const toUrl = (path) => {
-    const url = new URL(path, window.location.origin);
-    url.searchParams.set('version', version);
-    url.searchParams.set('type', mappingType);
-    url.searchParams.set('class', classPath);
-    return url;
-  };
-  const getSource = async () => fetch(toUrl('/api/source/get'));
+  const getSource = async () => fetch(getSourceUrl(version, mappingType, classPath));
 
   let response = await getSource();
   if (response.ok) return await response.text();
-
-  if (response.status !== 404 && response.status !== 412) {
-    throw new Error(`${response.status} ${await response.text()}`);
-  }
-
-  const decompileResp = await fetch(toUrl('/api/source/decompile'));
-  if (!decompileResp.ok && decompileResp.status !== 202) {
-    throw new Error(`decompile failed: ${decompileResp.status} ${await decompileResp.text()}`);
-  }
-
-  let retries = 15;
-  while (retries-- > 0) {
-    await new Promise((r) => setTimeout(r, 2200));
-    response = await getSource();
-    if (response.ok) {
-      return await response.text();
-    }
-    if (response.status !== 404 && response.status !== 412) {
-      throw new Error(`${response.status} ${await response.text()}`);
-    }
-  }
-  throw new Error('超时未生成源码，请稍后重试');
+  throw new Error(`${response.status} ${await response.text()}`);
 }
 
 function renderResultCard(item, index, version, mappingType) {
@@ -77,25 +57,24 @@ function renderResultCard(item, index, version, mappingType) {
   const card = document.createElement('article');
   card.className = 'result-card';
   card.innerHTML = `
-    <h3>${mainName} <span class="badge-type">${mainType}</span></h3>
-    <div class="row"><div class="key">Named</div><div class="value">${named.Name || '-'}</div><button class="copy-btn">复制 Named</button></div>
-    <div class="row"><div class="key">Notch</div><div class="value">${notch.Name || '-'}</div><button class="copy-btn">复制 Notch</button></div>
-    <div class="row"><div class="key">类</div><div class="value">${mainClass || '-'}</div><button class="copy-btn">复制 类</button></div>
-    <div class="row"><div class="key">签名</div><div class="value">${signature || '-'}</div><button class="copy-btn">复制 签名</button></div>
-    <div class="row"><div class="key">AW</div><div class="value">${notch.Name || '-'}</div><button class="copy-btn">复制 AW</button></div>
-    <div class="row"><div class="key">AT</div><div class="value">${named.Name || '-'}</div><button class="copy-btn">复制 AT</button></div>
-    <div class="row"><button class="copy-btn">复制 翻译</button><button class="source-btn">查看源码</button></div>
-    <div class="source-expanded hidden"><pre class="line-numbers"><code class="language-java">未加载</code></pre></div>
+    <h3><span>${mainName}</span><image src="copy-icon.svg" class="copy-btn-big"></image><span class="badge-type">${mainType}</span><image src="source-icon.svg" class="source-btn"></image></h3>
+    <div class="row">
+      <span class="value">${notch.Name || '-'}</span>&nbsp;<image src="copy-icon.svg" class="copy-btn"></image>
+      <span class="key">></span>
+      <span class="value">${named.Name || '-'}</span>&nbsp;<image src="copy-icon.svg" class="copy-btn"></image>
+    </div><br>
+    <div class="row">
+      <span class="key">签名：</span><span class="value">${signature || '-'}</span>&nbsp;<image src="copy-icon.svg" class="copy-btn">
+    </div>
+    <div class="source-expanded hidden"><pre class="line-numbers" data-src="${getSourceUrl(version, mappingType, classPath)}" data-download-link><code class="language-java">未加载</code></pre></div>
   `;
 
-  const [copyNamed, copyNotch, copyClass, copySignature, copyAw, copyAt, copyTranslated] = card.querySelectorAll('.copy-btn');
-  copyNamed.addEventListener('click', () => copyText(named.Name || '', 'Named'));
+  const [copyMainName] = card.querySelectorAll('.copy-btn-big');
+  const [copyNotch, copyNamed, copySignature] = card.querySelectorAll('.copy-btn');
+  copyMainName.addEventListener('click', () => copyText(mainName || '', 'Named'));
   copyNotch.addEventListener('click', () => copyText(notch.Name || '', 'Notch'));
-  copyClass.addEventListener('click', () => copyText(mainClass, '类'));
+  copyNamed.addEventListener('click', () => copyText(named.Name || '', 'Named'));
   copySignature.addEventListener('click', () => copyText(signature, '签名'));
-  copyAw.addEventListener('click', () => copyText(notch.Name || '', 'AW'));
-  copyAt.addEventListener('click', () => copyText(named.Name || '', 'AT'));
-  copyTranslated.addEventListener('click', () => copyText(translated.Name || '', '翻译'));
 
   const sourceBtn = card.querySelector('.source-btn');
   const sourceBlock = card.querySelector('.source-expanded');
@@ -181,7 +160,7 @@ async function searchMapping() {
     });
 
     updateSearchStatus(`共 ${filtered.length} 条结果`);
-    updateSideStatus('可点击查看源码在卡片下展开');
+    updateSideStatus('查询成功');
   } catch (err) {
     updateSearchStatus(`查询异常：${err.message}`, true);
   }

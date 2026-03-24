@@ -10,9 +10,7 @@ import (
 	"pluto/mapping/java"
 	"pluto/mapping/services"
 	"pluto/util"
-	"strconv"
 	"strings"
-	"time"
 )
 
 type Service interface {
@@ -68,35 +66,6 @@ func ensureRemappedJar(service Service, mcVersion string) (string, error) {
 	return service.Remap(mcVersion)
 }
 
-func GenerateSource(mcVersion, mappingType string) (string, error) {
-	start := time.Now()
-	if !CanAddTask(mcVersion, mappingType) {
-		return "", errors.New("this type has generated or generating")
-	}
-	service, ok := serviceMap[mappingType]
-	if !ok {
-		return "", errors.New("unknown mapping type")
-	}
-
-	slog.Info(fmt.Sprintf("Decompiling source type %s for %s", mappingType, mcVersion))
-	StartPending(mcVersion, mappingType)
-	path, err := service.Remap(mcVersion)
-	if err != nil {
-		FailurePending(mcVersion, mappingType)
-		return "", err
-	}
-	sourcePath := global.GetSourceFolder(service, mcVersion)
-	params := util.ConcatMultipleSlices([][]string{global.Config.Decompiler.JavaParams, {"-jar", global.DecompilerPath}, global.Config.Decompiler.DecompilerParams, {path, sourcePath}})
-	err = util.ExecuteCommand(global.Config.JavaPath, params, true)
-	if err != nil {
-		FailurePending(mcVersion, mappingType)
-		return "", err
-	}
-	Done(mcVersion, mappingType)
-	slog.Info("Done in " + strconv.FormatInt(int64(time.Since(start)/1000000), 10) + "ms")
-	return sourcePath, nil
-}
-
 func GenerateSourceForClass(mcVersion, mappingType, className string) (string, error) {
 	service, ok := serviceMap[mappingType]
 	if !ok {
@@ -115,9 +84,9 @@ func GenerateSourceForClass(mcVersion, mappingType, className string) (string, e
 	if _, err := os.Stat(targetPath); err == nil {
 		return targetPath, nil
 	}
-
-	if IsPending(mcVersion, mappingType) {
-		return "", errors.New("this mapping is pending")
+	targetFolder := filepath.Dir(targetPath)
+	if err := os.MkdirAll(targetFolder, os.ModePerm); err != nil {
+		return "", err
 	}
 
 	jarPath, err := ensureRemappedJar(service, mcVersion)
@@ -125,16 +94,12 @@ func GenerateSourceForClass(mcVersion, mappingType, className string) (string, e
 		return "", err
 	}
 
-	classFile := filepath.Join("temp", className+".class")
-	if err := os.MkdirAll(filepath.Dir(classFile), os.ModePerm); err != nil {
+	classFiles, err := util.ExtractClassFromJar(jarPath, className, "temp")
+	if err != nil {
 		return "", err
 	}
 
-	if err := util.ExtractClassFromJar(jarPath, className, classFile); err != nil {
-		return "", err
-	}
-
-	params := util.ConcatMultipleSlices([][]string{global.Config.Decompiler.JavaParams, {"-jar", global.DecompilerPath}, global.Config.Decompiler.DecompilerParams, {classFile, filepath.Dir(targetPath)}})
+	params := util.ConcatMultipleSlices([][]string{global.Config.Decompiler.JavaParams, {"-jar", global.DecompilerPath}, global.Config.Decompiler.DecompilerParams, classFiles, {targetFolder}})
 	if err := util.ExecuteCommand(global.Config.JavaPath, params, true); err != nil {
 		return "", err
 	}

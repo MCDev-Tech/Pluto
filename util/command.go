@@ -2,12 +2,13 @@ package util
 
 import (
 	"bufio"
-	"golang.org/x/text/encoding/simplifiedchinese"
-	"golang.org/x/text/transform"
 	"io"
 	"log/slog"
 	"os/exec"
 	"strings"
+
+	"golang.org/x/text/encoding/simplifiedchinese"
+	"golang.org/x/text/transform"
 )
 
 func convertGBKToUTF8(r io.Reader) io.Reader {

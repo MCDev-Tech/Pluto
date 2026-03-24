@@ -19,17 +19,6 @@ Ping This server
 - `keyword`: Searching keyword
 - `translate`: (Optional) Translate to target mapping
 
-### `/api/source/decompile`
-
-### Speed Limit
-
-2 times per 10s
-
-#### Queries
-
-- `version`: Target MC version
-- `type`: Target mapping type
-
 ### `/api/source/get`
 
 ### Speed Limit

@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"os"
 	"pluto/mapping"
-	"pluto/util"
 	"strings"
 	"time"
 
@@ -42,25 +41,5 @@ func handleSourceGet(c *gin.Context) {
 }
 
 func initSourceApi(g *gin.RouterGroup) {
-	g.GET("/source/decompile", RateLimiterMiddleware(10*time.Second, 2), func(c *gin.Context) {
-		mcVersion, mappingType := c.Query("version"), c.Query("type")
-		if mcVersion == "" || mappingType == "" {
-			c.String(http.StatusBadRequest, "Missing query parameter(s)")
-			return
-		}
-		if mapping.IsAvailable(mcVersion, mappingType) {
-			c.String(http.StatusOK, "Decompiled")
-			return
-		}
-		if mapping.IsPending(mcVersion, mappingType) {
-			c.String(http.StatusForbidden, "This task is pending")
-			return
-		}
-		util.Execute(func() error {
-			_, err := mapping.GenerateSource(mcVersion, mappingType)
-			return err
-		})
-		c.String(http.StatusAccepted, "Started decompiling, please wait")
-	})
 	g.GET("/source/get", RateLimiterMiddleware(2*time.Second, 5), handleSourceGet)
 }

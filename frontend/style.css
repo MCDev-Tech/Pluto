@@ -145,7 +145,7 @@ body {
 }
 
 .row {
-  display: flex;
+  display: inline;
   align-items: center;
   justify-content: space-between;
   margin: 6px 0;
@@ -159,26 +159,27 @@ body {
 }
 
 .value {
-  flex: 1;
   color: var(--text);
   font-size: .9rem;
   overflow-wrap: anywhere;
 }
 
-.copy-btn,
 .source-btn {
-  border: 1px solid rgba(124, 176, 255, 0.3);
-  background: rgba(7, 15, 35, 0.75);
-  color: #dbe9ff;
-  border-radius: 8px;
-  padding: 4px 8px;
-  font-size: .78rem;
+  width: 25px;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.copy-btn-big {
+  width: 25px;
   cursor: pointer;
 }
 
-.copy-btn:hover,
-.source-btn:hover {
-  background: rgba(39, 84, 153, 0.9);
+.copy-btn {
+  width: 20px;
+  top: 5px;
+  position: relative;
+  cursor: pointer;
 }
 
 .source-expanded {
@@ -209,7 +210,6 @@ body {
   }
 
   .left-menu {
-    position: sticky;
     top: 0;
     z-index: 20;
   }

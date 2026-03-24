@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"os"
 	"pluto/global"
-	"pluto/mapping"
 	"pluto/util"
 	"pluto/webserver"
 )
@@ -22,10 +21,6 @@ func main() {
 	//Config
 	slog.Info("Loading configs...")
 	err := global.LoadConfig()
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = mapping.InitMappingConfig()
 	if err != nil {
 		log.Fatal(err)
 	}
