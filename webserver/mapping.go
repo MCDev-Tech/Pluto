@@ -7,8 +7,8 @@ import (
 	"time"
 )
 
-func initMappingApis(g *gin.Engine) {
-	g.GET("/api/mapping/search", RateLimiterMiddleware(2*time.Second, 5), func(c *gin.Context) {
+func initMappingApis(g *gin.RouterGroup) {
+	g.GET("/mapping/search", RateLimiterMiddleware(2*time.Second, 5), func(c *gin.Context) {
 		mcVersion, mappingType, keyword, translate := c.Query("version"), c.Query("type"), c.Query("keyword"), c.Query("translate")
 		if mcVersion == "" || mappingType == "" || keyword == "" {
 			c.String(http.StatusBadRequest, "Missing query parameter(s)")

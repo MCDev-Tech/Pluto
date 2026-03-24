@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pluto MC 映射查询</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <div class="app-shell">
+    <header class="hero">
+      <h1>Pluto 映射查询</h1>
+      <p id="api-version"></p>
+    </header>
+
+    <main class="grid-container">
+      <aside class="panel panel-left">
+        <h2>查询控制</h2>
+
+        <label>MC 版本
+          <input list="versions" id="version" value="1.21.10" spellcheck="false">
+          <datalist id="versions">
+            <option value="1.20.1"></option>
+            <option value="1.21.1"></option>
+            <option value="1.21.10"></option>
+          </datalist>
+        </label>
+
+        <label>映射表类型
+          <select id="mappingType">
+            <option value="official">official</option>
+            <option value="yarn">yarn</option>
+          </select>
+        </label>
+
+        <label>翻译类型（可选）
+          <select id="translateType">
+            <option value="">无</option>
+            <option value="official">official</option>
+            <option value="yarn">yarn</option>
+          </select>
+        </label>
+
+        <label>关键字
+          <input id="keyword" type="text" placeholder="至少 3 个字符" spellcheck="false">
+        </label>
+
+        <fieldset>
+          <legend>显示元素类型</legend>
+          <label><input type="checkbox" id="filterClass" checked> 类 (class)</label>
+          <label><input type="checkbox" id="filterMethod" checked> 方法 (method)</label>
+          <label><input type="checkbox" id="filterField" checked> 字段 (field)</label>
+        </fieldset>
+
+        <button id="searchBtn" class="btn primary">开始查询</button>
+
+        <div id="sideStatus" class="status">等待查询</div>
+
+        <hr>
+
+        <h2>源码查看</h2>
+        <div class="source-hint">先在结果中点击“查看源码”按钮。</div>
+        <pre id="sourceResult" class="source-box"><code>暂无</code></pre>
+      </aside>
+
+      <section class="panel panel-right">
+        <h2>查询结果</h2>
+        <div id="searchStatus" class="status">未查询</div>
+        <table id="resultTable" class="result-table" aria-label="搜索结果表格">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>类型</th>
+              <th>AW（Notch）</th>
+              <th>AT（Named）</th>
+              <th>类</th>
+              <th>签名</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+
+</html>

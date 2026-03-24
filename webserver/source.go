@@ -11,8 +11,8 @@ import (
 	"time"
 )
 
-func initSourceApi(g *gin.Engine) {
-	g.GET("/api/source/decompile", RateLimiterMiddleware(10*time.Second, 2), func(c *gin.Context) {
+func initSourceApi(g *gin.RouterGroup) {
+	g.GET("/source/decompile", RateLimiterMiddleware(10*time.Second, 2), func(c *gin.Context) {
 		mcVersion, mappingType := c.Query("version"), c.Query("type")
 		if mcVersion == "" || mappingType == "" {
 			c.String(http.StatusBadRequest, "Missing query parameter(s)")
@@ -32,7 +32,7 @@ func initSourceApi(g *gin.Engine) {
 		})
 		c.String(http.StatusAccepted, "Started decompiling, please wait")
 	})
-	g.GET("/api/source/get", RateLimiterMiddleware(2*time.Second, 5), func(c *gin.Context) {
+	g.GET("/source/get", RateLimiterMiddleware(2*time.Second, 5), func(c *gin.Context) {
 		mcVersion, mappingType, class := c.Query("version"), c.Query("type"), c.Query("class")
 		if mcVersion == "" || mappingType == "" || class == "" {
 			c.String(http.StatusBadRequest, "Missing query parameter(s)")

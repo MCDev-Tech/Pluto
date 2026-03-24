@@ -3,3 +3,4 @@ cache
 libraries
 temp
 config.yml
+*.exe

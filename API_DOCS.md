@@ -40,4 +40,4 @@ Ping This server
 
 - `version`: Target MC version
 - `type`: Target mapping type
-- `class`: Target class
+- `class`: Target class, Example: net/minecraft/core/Registry
