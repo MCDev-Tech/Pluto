@@ -17,14 +17,14 @@ jobs:
 
       - name: Build for Linux
         run: |
-          GOOS=linux GOARCH=amd64 go build -o pluto-linux-amd64
+          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o pluto-linux-amd64
           mkdir -p dist
           mv pluto-linux-amd64 dist/
           chmod +x dist/pluto-linux-amd64
 
       - name: Build for Windows
         run: |
-          GOOS=windows GOARCH=amd64 go build -o pluto-windows-amd64.exe
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -o pluto-windows-amd64.exe
           mv pluto-windows-amd64.exe dist/
 
       - name: Upload artifacts

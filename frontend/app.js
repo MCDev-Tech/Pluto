@@ -1,5 +1,9 @@
 ﻿window.onload = async _ => {
-  document.getElementById('searchBtn').addEventListener('click', searchMapping);
+  document.getElementById('searchBtn').addEventListener('click', searchMapping)
+  document.getElementById('keyword').addEventListener('keydown', e => {
+    if (e.key == 'Enter') this.searchMapping()
+  })
+  document.getElementById('download').addEventListener('click', e => window.open('https://github.com/MCDev-Tech/Pluto/releases', '_blank'))
   document.getElementById('api-version').innerHTML = 'Backend v' + await fetch('/api').then(res => res.json()).then(json => json.version)
   loadMCVersions()
 }

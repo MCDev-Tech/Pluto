@@ -86,11 +86,19 @@ body {
   margin-right: 10px;
 }
 
+.download-btn {
+  margin-bottom: -8px;
+  width: 25px;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+
 .btn.primary {
   color: white;
   border-color: transparent;
   font-weight: 700;
-  margin: 10px 0;
+  margin: 10px 0 0 0;
   border: 1px solid var(--border);
   cursor: pointer;
 }
