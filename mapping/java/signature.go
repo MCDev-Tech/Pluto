@@ -69,8 +69,7 @@ func ClassToByteCodeSignature(javaType string) string {
 	javaType = strings.TrimSpace(javaType)
 
 	// 处理数组类型
-	if strings.HasSuffix(javaType, "[]") {
-		elementType := strings.TrimSuffix(javaType, "[]")
+	if elementType, ok := strings.CutSuffix(javaType, "[]"); ok {
 		return "[" + ClassToByteCodeSignature(elementType)
 	}
 

@@ -108,9 +108,10 @@ func (s *Official) LoadMapping(mcVersion string) (*map[java.SingleInfo]java.Sing
 	for notch, named := range mapping {
 		notch.Name = java.FullToClassName(notch.Name)
 		named.Name = java.FullToClassName(named.Name)
-		if notch.Type == "method" {
+		switch notch.Type {
+		case "method":
 			notch.Signature = java.ObfuscateMethodSignature(named.Signature, classMapping)
-		} else if notch.Type == "field" {
+		case "field":
 			notch.Signature = java.ObfuscateTypeSignature(named.Signature, classMapping)
 		}
 		result[notch] = named

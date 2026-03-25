@@ -143,24 +143,33 @@ body {
 }
 
 .badge-type {
-  background: rgba(70, 84, 156, 0.6);
-  color: #cbe1ff;
+  color: black;
   font-size: .74rem;
   border-radius: 999px;
   padding: 2px 8px;
 }
 
+.badge-type-class {
+  background-color: palevioletred;
+}
+
+.badge-type-method {
+  background-color: orange;
+}
+
+.badge-type-field {
+  background-color: darkcyan;
+}
+
 .row {
   display: inline;
   align-items: center;
-  justify-content: space-between;
   margin: 6px 0;
-  gap: 6px;
+  word-break: break-all;
 }
 
 .key {
   color: var(--muted);
-  min-width: 50px;
   font-size: .76rem;
 }
 
@@ -179,6 +188,7 @@ body {
 .copy-btn-big {
   width: 25px;
   cursor: pointer;
+  margin-bottom: -5px;
 }
 
 .copy-btn {

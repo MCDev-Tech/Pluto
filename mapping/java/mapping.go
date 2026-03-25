@@ -18,6 +18,22 @@ type InfoForNetwork struct {
 	Translated SingleInfo `json:"translated,omitzero"`
 }
 
+type Filter struct {
+	Key int64
+}
+
+func (f *Filter) Filter(t string) bool {
+	switch t {
+	case "class":
+		return f.Key&0x4 > 0
+	case "method":
+		return f.Key&0x2 > 0
+	case "field":
+		return f.Key&0x1 > 0
+	}
+	return true
+}
+
 type searchResult struct {
 	info InfoForNetwork
 	// 匹配类型权重: 完全匹配键=3, 前缀匹配键=2, 包含匹配键=1
@@ -28,7 +44,7 @@ type searchResult struct {
 	nameType int
 }
 
-func (m *Mappings) Search(keyword string, maxCount int) []InfoForNetwork {
+func (m *Mappings) Search(keyword string, maxCount int, filter *Filter) []InfoForNetwork {
 	if maxCount <= 0 {
 		return []InfoForNetwork{}
 	}
@@ -44,6 +60,9 @@ func (m *Mappings) Search(keyword string, maxCount int) []InfoForNetwork {
 		}
 		matchType := getMatchType(name, keyword)
 		for _, notch := range infos {
+			if !filter.Filter(notch.Type) {
+				continue
+			}
 			// 直接从NotchToNamed获取对应的Named
 			if named, exists := m.NotchToNamed[notch]; exists {
 				key := notch.Name + "|" + named.Name
@@ -70,6 +89,9 @@ func (m *Mappings) Search(keyword string, maxCount int) []InfoForNetwork {
 		}
 		matchType := getMatchType(name, keyword)
 		for _, named := range infos {
+			if !filter.Filter(named.Type) {
+				continue
+			}
 			// 直接从NamedToNotch获取对应的Notch
 			if notch, exists := m.NamedToNotch[named]; exists {
 				key := notch.Name + "|" + named.Name

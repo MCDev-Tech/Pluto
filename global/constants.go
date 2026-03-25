@@ -1,3 +1,3 @@
 package global
 
-const Version = "1.0-SNAPSHOT"
+const Version = "1.0"

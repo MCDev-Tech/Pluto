@@ -8,7 +8,7 @@ import (
 )
 
 type Urls struct {
-	MavenCentral       string `yaml:"MavenCentral"`
+	MavenCentral       string `yaml:"mavenCentral"`
 	MojangLauncherMeta string `yaml:"mojangLauncherMeta"`
 	MojangPistonData   string `yaml:"mojangPistonData"`
 	MojangPistonMeta   string `yaml:"mojangPistonMeta"`

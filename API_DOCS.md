@@ -17,6 +17,7 @@ Ping This server
 - `version`: Target MC version
 - `type`: Target mapping type
 - `keyword`: Searching keyword
+- `filter`: Filters: 0x100 class, 0x10 method, 0x1 field
 - `translate`: (Optional) Translate to target mapping
 
 ### `/api/source/get`

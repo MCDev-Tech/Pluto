@@ -5,14 +5,10 @@
 }
 
 async function loadMCVersions() {
-  let versions = await fetch('https://launchermeta.mojang.com/mc/game/version_manifest_v2.json').then(res => res.json()).catch(err => console.log(err))
-  let releaseVersions = []
-  for (let { id, type } of versions.versions)
-    if (type === 'release' && id.startsWith('1.')) //Since 26.1 mojang no longer obfuscate source code
-      releaseVersions.push(id)
+  let versions = await fetch('versions.json').then(res => res.json()).catch(err => console.log(err))
   const versionSelect = document.getElementById('version')
   versionSelect.innerHTML = ''
-  for (let version of releaseVersions) {
+  for (let version of versions) {
     let option = document.createElement('option')
     option.value = version
     option.innerText = version
@@ -76,10 +72,10 @@ function buildAT(data) {
 }
 
 function buildAW(data) {
-  const classSignature = data.Signature.substring(1)
+  const classSignature = data.Signature.substring(1, data.Signature.length - 1)
   switch (data.Type) {
     case 'class': return `accessible class ${classSignature}`
-    case 'method': return `accessible method L${data.Class.replaceAll('.', '/')}; ${data.Name} ${data.Signature}`
+    case 'method': return `accessible method ${data.Class.replaceAll('.', '/')} ${data.Name} ${data.Signature}`
     case 'field': return `accessible field ${classSignature} ${data.Name} ${data.Signature}`
   }
   return 'Unknown Type'
@@ -88,7 +84,7 @@ function buildAW(data) {
 function renderResultCard(item, index, version, mappingType) {
   const named = item.Named || item.named || {};
   const notch = item.Notch || item.notch || {};
-  const translated = item.Translated || item.translated || {}, hasTranslated = Object.keys(translated).length > 0
+  const translated = item.Translated || item.translated || {}, hasTranslation = Object.keys(translated).length > 0
 
   const mainClass = named.Class || notch.Class || '';
   const mainType = (named.Type || 'unknown').toLowerCase();
@@ -135,19 +131,33 @@ function renderResultCard(item, index, version, mappingType) {
   const title = document.createElement('h3');
   title.appendChild(createSpan(named.Name));
   title.appendChild(createCopyButton(named.Name, true));
-  title.appendChild(createSpan(mainType, 'badge-type'));
+  if (hasTranslation) {
+    title.appendChild(createSpan('>>', 'key'))
+    title.appendChild(createSpan(' '))
+    title.appendChild(createSpan(translated.Name));
+    title.appendChild(createCopyButton(translated.Name, true))
+  }
+  title.appendChild(createSpan(mainType, 'badge-type badge-type-' + mainType));
   const sourceButton = title.appendChild(createSourceButton());
   card.appendChild(title);
 
   const divTranslate = document.createElement('div')
   divTranslate.className = 'row'
+  if (hasTranslation) {
+    divTranslate.appendChild(createSpan(buildName(named), 'value'))
+    divTranslate.appendChild(createSpan(' '))
+    divTranslate.appendChild(createCopyButton(buildName(named)))
+    divTranslate.appendChild(createSpan('>', 'key'))
+    divTranslate.appendChild(createSpan(' '))
+  }
   divTranslate.appendChild(createSpan(buildName(notch), 'value'))
   divTranslate.appendChild(createSpan(' '))
   divTranslate.appendChild(createCopyButton(buildName(notch)))
   divTranslate.appendChild(createSpan('>', 'key'))
-  divTranslate.appendChild(createSpan(buildName(named), 'value'))
   divTranslate.appendChild(createSpan(' '))
-  divTranslate.appendChild(createCopyButton(buildName(named)))
+  divTranslate.appendChild(createSpan(buildName(hasTranslation ? translated : named), 'value'))
+  divTranslate.appendChild(createSpan(' '))
+  divTranslate.appendChild(createCopyButton(buildName(hasTranslation ? translated : named)))
   card.appendChild(divTranslate)
   card.appendChild(document.createElement('br'))
 
@@ -243,6 +253,7 @@ async function searchMapping() {
     url.searchParams.set('version', version);
     url.searchParams.set('type', mappingType);
     url.searchParams.set('keyword', keyword);
+    url.searchParams.set('filter', (showClass << 2) + (showMethod << 1) + (showField << 0));
     if (translateType) {
       url.searchParams.set('translate', translateType);
     }
@@ -256,7 +267,7 @@ async function searchMapping() {
 
     const results = await response.json();
     const filtered = results.filter((item) => {
-      const t = ((item.Named && item.Named.Type) || (item.Notch && item.Notch.Type) || '').toLowerCase();
+      const t = item.named.Type;
       if (t === 'class' && !showClass) return false;
       if (t === 'method' && !showMethod) return false;
       if (t === 'field' && !showField) return false;

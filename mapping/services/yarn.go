@@ -1,14 +1,13 @@
 package services
 
 import (
+	"archive/zip"
 	"bufio"
 	"bytes"
-	"compress/gzip"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 	"os"
 	"pluto/global"
 	"pluto/mapping/java"
@@ -60,11 +59,11 @@ func (s *Yarn) GetPathOrDownload(mcVersion string) (string, error) {
 	if latestVersion == nil {
 		return "", errors.New("Unable to find latest version for " + mcVersion)
 	}
-	jar, err := network.Get(fmt.Sprintf(global.Config.Urls.FabricMaven+"/net/fabricmc/yarn/%s/yarn-%s-tiny.gz", latestVersion.Version, latestVersion.Version))
+	jar, err := network.Get(fmt.Sprintf(global.Config.Urls.FabricMaven+"/net/fabricmc/yarn/%s/yarn-%s-mergedv2.jar", latestVersion.Version, latestVersion.Version))
 	if err != nil {
 		return "", errors.New("Unable to download yarn mapping: " + err.Error())
 	}
-	data, err := getMappingsTinyFromGzip(jar)
+	data, err := ExtractMappingsTinyFromJar(jar)
 	if err != nil {
 		return "", errors.New("Unable to unzip yarn mapping: " + err.Error())
 	}
@@ -102,34 +101,26 @@ func (s *Yarn) LoadMapping(mcVersion string) (*map[java.SingleInfo]java.SingleIn
 	if scanner.Scan() {
 		_ = scanner.Text() //Remove the first definition line
 	}
+	notchClassCache, yarnClassCache := "", ""
 	for scanner.Scan() {
-		line := scanner.Text()
+		line := strings.Trim(scanner.Text(), " \t")
 		split := strings.Split(line, "\t")
 		if len(split) < 4 {
 			continue
 		}
 		switch split[0] {
-		case "CLASS":
-			notch, yarn := java.PackClassInfo(split[1]), java.PackClassInfo(split[3])
+		case "c":
+			notchClassCache, yarnClassCache = split[1], split[3]
+			notch, yarn := java.PackClassInfo(notchClassCache), java.PackClassInfo(yarnClassCache)
 			mapping[notch] = yarn
-			break
-		case "METHOD":
-			yarnClass, ok := mapping[java.PackClassInfo(split[1])]
-			if !ok {
-				continue
-			}
-			notch, yarn := java.PackMethodInfo(split[3], split[1], split[2]), java.PackMethodInfo(split[5], yarnClass.Signature, "")
+		case "m":
+			notch, yarn := java.PackMethodInfo(split[2], notchClassCache, split[1]), java.PackMethodInfo(split[4], yarnClassCache, "")
 			mapping[notch] = yarn
-			break
-		case "FIELD":
-			yarnClass, ok := mapping[java.PackClassInfo(split[1])]
-			if !ok {
-				continue
-			}
-			notch, yarn := java.PackFieldInfo(split[3], split[1], split[2]), java.PackFieldInfo(split[5], yarnClass.Signature, "")
+		case "f":
+			notch, yarn := java.PackFieldInfo(split[2], notchClassCache, split[1]), java.PackFieldInfo(split[4], yarnClassCache, "")
 			mapping[notch] = yarn
-			break
 		}
+		//case "p":
 	}
 	//Post processor
 	result, classMapping := make(map[java.SingleInfo]java.SingleInfo), make(map[string]string)
@@ -169,20 +160,26 @@ func (s *Yarn) Remap(mcVersion string) (string, error) {
 	return outputPath, nil
 }
 
-func getMappingsTinyFromGzip(gzipData []byte) ([]byte, error) {
-	gzipReader, err := gzip.NewReader(bytes.NewReader(gzipData))
+func ExtractMappingsTinyFromJar(jarData []byte) ([]byte, error) {
+	zipReader, err := zip.NewReader(bytes.NewReader(jarData), int64(len(jarData)))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("解析JAR/ZIP格式失败: %w", err)
 	}
-	defer func(gzipReader *gzip.Reader) {
-		err := gzipReader.Close()
-		if err != nil {
-			slog.Error("Error closing gzip reader: " + err.Error())
+	targetPath := "mappings/mappings.tiny"
+	for _, file := range zipReader.File {
+		if file.Name == targetPath {
+			fileReader, err := file.Open()
+			if err != nil {
+				return nil, fmt.Errorf("打开 mappings.tiny 文件失败: %w", err)
+			}
+			defer fileReader.Close()
+
+			fileContent, err := io.ReadAll(fileReader)
+			if err != nil {
+				return nil, fmt.Errorf("读取 mappings.tiny 内容失败: %w", err)
+			}
+			return fileContent, nil
 		}
-	}(gzipReader)
-	content, err := io.ReadAll(gzipReader)
-	if err != nil {
-		return nil, err
 	}
-	return content, nil
+	return nil, fmt.Errorf("JAR中未找到文件: %s", targetPath)
 }
