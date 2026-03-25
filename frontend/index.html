@@ -5,6 +5,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pluto MC 映射查询</title>
+  <script src="prism.js"></script>
+  <script src="app.js"></script>
   <link rel="stylesheet" href="prism.css">
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="favicon.webp">
@@ -23,12 +25,9 @@
 
         <div class="menu-group">
           <small>版本</small>
-          <input list="versions" id="version" value="1.21.10" spellcheck="false" />
-          <datalist id="versions">
-            <option value="1.20.1"></option>
-            <option value="1.21.1"></option>
-            <option value="1.21.10"></option>
-          </datalist>
+          <select id="version">
+            <option>加载中……</option>
+          </select>
         </div>
 
         <div class="menu-group">
@@ -74,9 +73,6 @@
       </section>
     </main>
   </div>
-
-  <script src="prism.js"></script>
-  <script src="app.js"></script>
 </body>
 
 </html>

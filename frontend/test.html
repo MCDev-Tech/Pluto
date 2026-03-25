@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>自定义 Tooltip</title>
+  <style>
+    .tooltip-container {
+      position: relative;
+      display: inline-block;
+      cursor: pointer;
+    }
+
+    .tooltip-container .tooltip-text {
+      visibility: hidden;
+      width: 80px;
+      background-color: black;
+      color: #fff;
+      text-align: center;
+      border-radius: 5px;
+      padding: 5px 0;
+      position: absolute;
+      z-index: 1;
+      bottom: 125%;
+      left: 50%;
+      margin-left: -40px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .tooltip-container:hover .tooltip-text {
+      visibility: visible;
+      opacity: 1;
+    }
+  </style>
+</head>
+
+<body>
+  <br><br><br><br><br>
+  <div class="tooltip-container">
+    <button>悬停查看提示
+      <div class="tooltip-text">点击复制</div>
+    </button>
+  </div>
+  <div class="source-btn tooltip-container">
+    <image src="source-icon.svg" class="source-btn"></image>
+    <div class="tooltip-text">查看源代码</div>
+  </div>
+</body>
+
+</html>

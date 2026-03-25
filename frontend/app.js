@@ -1,6 +1,24 @@
 ﻿window.onload = async _ => {
   document.getElementById('searchBtn').addEventListener('click', searchMapping);
   document.getElementById('api-version').innerHTML = 'Backend v' + await fetch('/api').then(res => res.json()).then(json => json.version)
+  loadMCVersions()
+}
+
+async function loadMCVersions() {
+  let versions = await fetch('https://launchermeta.mojang.com/mc/game/version_manifest_v2.json').then(res => res.json()).catch(err => console.log(err))
+  let releaseVersions = []
+  for (let { id, type } of versions.versions)
+    if (type === 'release' && id.startsWith('1.')) //Since 26.1 mojang no longer obfuscate source code
+      releaseVersions.push(id)
+  const versionSelect = document.getElementById('version')
+  versionSelect.innerHTML = ''
+  for (let version of releaseVersions) {
+    let option = document.createElement('option')
+    option.value = version
+    option.innerText = version
+    versionSelect.appendChild(option)
+  }
+  versionSelect.value = '1.20.1'
 }
 
 function updateSearchStatus(msg, isError = false) {
@@ -14,12 +32,11 @@ function toSlashClass(className) {
   return className.includes('/') ? className : className.replace(/\./g, '/');
 }
 
-async function copyText(value) {
+async function copyText(value, textDiv) {
   if (!value) return;
-  try {
-    await navigator.clipboard.writeText(value);
-  } catch (e) {
-  }
+  await navigator.clipboard.writeText(value).catch(err => console.log(err));
+  textDiv.innerText = '已复制！'
+  setTimeout(() => textDiv.innerText = '点击复制', 500)
 }
 
 function getSourceUrl(version, mappingType, classPath) {
@@ -38,21 +55,32 @@ async function fetchSourceText(version, mappingType, classPath) {
   throw new Error(`${response.status} ${await response.text()}`);
 }
 
-function buildAT(named) {
-  switch (named.Type) {
-    case 'class': return `public ${named.Class}`
-    case 'method': return `public ${named.Class} ${named.Name}${named.Signature}`
-    case 'field': return `public ${named.Class} ${named.Name}`
+function getLast(string, separator) {
+  return string.split(separator).reverse()[0]
+}
+
+function buildName(data) {
+  switch (data.Type) {
+    case 'class': return data.Name
+    default: return getLast(data.Class, '.') + '.' + data.Name
+  }
+}
+
+function buildAT(data) {
+  switch (data.Type) {
+    case 'class': return `public ${data.Class}`
+    case 'method': return `public ${data.Class} ${data.Name}${data.Signature}`
+    case 'field': return `public ${data.Class} ${data.Name}`
   }
   return 'Unknown Type'
 }
 
-function buildAW(named) {
-  const classSignature = named.Signature.substring(1)
-  switch (named.Type) {
+function buildAW(data) {
+  const classSignature = data.Signature.substring(1)
+  switch (data.Type) {
     case 'class': return `accessible class ${classSignature}`
-    case 'method': return `accessible method L${named.Class.replaceAll('.', '/')}; ${named.Name} ${named.Signature}`
-    case 'field': return `accessible field ${classSignature} ${named.Name} ${named.Signature}`
+    case 'method': return `accessible method L${data.Class.replaceAll('.', '/')}; ${data.Name} ${data.Signature}`
+    case 'field': return `accessible field ${classSignature} ${data.Name} ${data.Signature}`
   }
   return 'Unknown Type'
 }
@@ -60,69 +88,131 @@ function buildAW(named) {
 function renderResultCard(item, index, version, mappingType) {
   const named = item.Named || item.named || {};
   const notch = item.Notch || item.notch || {};
+  const translated = item.Translated || item.translated || {}, hasTranslated = Object.keys(translated).length > 0
 
-  // const translated = item.Translated || item.translated || {};
   const mainClass = named.Class || notch.Class || '';
   const mainType = (named.Type || 'unknown').toLowerCase();
   const signature = named.Signature || '';
   const classPath = toSlashClass(mainClass);
   const namedAT = buildAT(named), namedAW = buildAW(named)
 
+  function createSpan(text, clazz) {
+    let span = document.createElement('span');
+    span.innerText = text;
+    if (clazz) span.className = clazz;
+    return span;
+  }
+  function createCopyButton(content, big = false) {
+    let main = document.createElement('div');
+    main.className = 'tooltip-container';
+    let image = document.createElement('img');
+    image.className = big ? 'copy-btn-big' : 'copy-btn';
+    image.src = 'copy-icon.svg';
+    main.appendChild(image);
+    let div = document.createElement('div');
+    div.className = 'tooltip-text';
+    div.innerText = '点击复制';
+    main.appendChild(div);
+    image.addEventListener('click', () => copyText(content, div));
+    return main;
+  }
+  function createSourceButton() {
+    let main = document.createElement('div');
+    main.className = 'source-btn tooltip-container';
+    let image = document.createElement('img');
+    image.className = 'source-btn'
+    image.src = 'source-icon.svg';
+    main.appendChild(image);
+    let div = document.createElement('div');
+    div.className = 'tooltip-text';
+    div.innerText = '查看源代码';
+    main.appendChild(div);
+    return main;
+  }
   const card = document.createElement('article');
   card.className = 'result-card';
-  card.innerHTML = `
-    <h3><span>${named.Name}</span><image src="copy-icon.svg" class="copy-btn-big"></image><span class="badge-type">${mainType}</span><image src="source-icon.svg" class="source-btn"></image></h3>
-    <div class="row">
-      <span class="value">${notch.Name || '-'}</span>&nbsp;<image src="copy-icon.svg" class="copy-btn"></image>
-      <span class="key">></span>
-      <span class="value">${named.Name || '-'}</span>&nbsp;<image src="copy-icon.svg" class="copy-btn"></image>
-    </div><br>
-    <div class="row">
-      <span class="key">签名：</span><span class="value">${signature || '-'}</span>&nbsp;<image src="copy-icon.svg" class="copy-btn">
-    </div><br>
-    <div class="row">
-      <span class="key">AT：</span><span class="value">${namedAT || '-'}</span>&nbsp;<image src="copy-icon.svg" class="copy-btn">
-    </div><br>
-    <div class="row">
-      <span class="key">AW：</span><span class="value">${namedAW || '-'}</span>&nbsp;<image src="copy-icon.svg" class="copy-btn">
-    </div>
-    <div class="source-expanded hidden"><pre class="line-numbers" data-src="${getSourceUrl(version, mappingType, classPath)}" data-download-link><code class="language-java">未加载</code></pre></div>
-  `;
 
-  const [copyMainName] = card.querySelectorAll('.copy-btn-big');
-  const [copyNotch, copyNamed, copySignature, copyAT, copyAW] = card.querySelectorAll('.copy-btn');
-  copyMainName.addEventListener('click', () => copyText(named.Name || ''));
-  copyNotch.addEventListener('click', () => copyText(notch.Name || ''));
-  copyNamed.addEventListener('click', () => copyText(named.Name || ''));
-  copySignature.addEventListener('click', () => copyText(signature));
-  copyAT.addEventListener('click', () => copyText(namedAT));
-  copyAW.addEventListener('click', () => copyText(namedAW));
+  const title = document.createElement('h3');
+  title.appendChild(createSpan(named.Name));
+  title.appendChild(createCopyButton(named.Name, true));
+  title.appendChild(createSpan(mainType, 'badge-type'));
+  const sourceButton = title.appendChild(createSourceButton());
+  card.appendChild(title);
 
-  const sourceBtn = card.querySelector('.source-btn');
-  const sourceBlock = card.querySelector('.source-expanded');
-  const sourceCode = sourceBlock.querySelector('code');
+  const divTranslate = document.createElement('div')
+  divTranslate.className = 'row'
+  divTranslate.appendChild(createSpan(buildName(notch), 'value'))
+  divTranslate.appendChild(createSpan(' '))
+  divTranslate.appendChild(createCopyButton(buildName(notch)))
+  divTranslate.appendChild(createSpan('>', 'key'))
+  divTranslate.appendChild(createSpan(buildName(named), 'value'))
+  divTranslate.appendChild(createSpan(' '))
+  divTranslate.appendChild(createCopyButton(buildName(named)))
+  card.appendChild(divTranslate)
+  card.appendChild(document.createElement('br'))
 
-  sourceBtn.addEventListener('click', async () => {
+  const divSignature = document.createElement('div')
+  divSignature.className = 'row'
+  divSignature.appendChild(createSpan('签名：', 'key'))
+  divSignature.appendChild(createSpan(signature, 'value'))
+  divSignature.appendChild(createSpan(' '))
+  divSignature.appendChild(createCopyButton(signature))
+  card.appendChild(divSignature)
+  card.appendChild(document.createElement('br'))
+
+  card.appendChild(document.createElement('hr'))
+
+  const divAT = document.createElement('div')
+  divAT.className = 'row'
+  divAT.appendChild(createSpan('AT：', 'key'))
+  divAT.appendChild(createSpan(namedAT, 'value'))
+  divAT.appendChild(createSpan(' '))
+  divAT.appendChild(createCopyButton(namedAT))
+  card.appendChild(divAT)
+  card.appendChild(document.createElement('br'))
+
+  const divAW = document.createElement('div')
+  divAW.className = 'row'
+  divAW.appendChild(createSpan('AW：', 'key'))
+  divAW.appendChild(createSpan(namedAW, 'value'))
+  divAW.appendChild(createSpan(' '))
+  divAW.appendChild(createCopyButton(namedAW))
+  card.appendChild(divAW)
+
+  const divSource = document.createElement('div')
+  divSource.className = 'source-expanded hidden'
+  const pre = document.createElement('pre')
+  pre.className = 'line-numbers'
+  pre['data-src'] = getSourceUrl(version, mappingType, classPath)
+  pre['data-download-link'] = true
+  const code = document.createElement('code')
+  code.className = 'language-java'
+  code.innerText = '未加载'
+  pre.appendChild(code)
+  divSource.append(pre)
+  card.append(divSource)
+
+  sourceButton.addEventListener('click', async () => {
     if (!classPath) {
-      sourceCode.textContent = '无可用类路径';
-      sourceBlock.classList.remove('hidden');
+      code.textContent = '无可用类路径';
+      divSource.classList.remove('hidden');
       return;
     }
 
-    if (!sourceBlock.classList.contains('hidden')) {
-      sourceBlock.classList.add('hidden');
+    if (!divSource.classList.contains('hidden')) {
+      divSource.classList.add('hidden');
       return;
     }
 
-    sourceBlock.classList.remove('hidden');
-    sourceCode.textContent = '加载中...';
+    divSource.classList.remove('hidden');
+    code.textContent = '加载中...';
     try {
       const sourceText = await fetchSourceText(version, mappingType, classPath);
-      sourceCode.textContent = sourceText || '源码为空';
+      code.textContent = sourceText || '源码为空';
       //Apply highlight
       Prism.highlightAll();
     } catch (err) {
-      sourceCode.textContent = `错误：${err.message}`;
+      code.textContent = `错误：${err.message}`;
     }
   });
 
@@ -132,13 +222,13 @@ function renderResultCard(item, index, version, mappingType) {
 async function searchMapping() {
   const resultList = document.getElementById('resultList');
 
-  const version = document.querySelector('#version').value.trim();
-  const mappingType = document.querySelector('#mappingType').value;
-  const translateType = document.querySelector('#translateType').value;
-  const keyword = document.querySelector('#keyword').value.trim();
-  const showClass = document.querySelector('#filterClass').checked;
-  const showMethod = document.querySelector('#filterMethod').checked;
-  const showField = document.querySelector('#filterField').checked;
+  const version = document.getElementById('version').value.trim();
+  const mappingType = document.getElementById('mappingType').value;
+  const translateType = document.getElementById('translateType').value;
+  const keyword = document.getElementById('keyword').value.trim();
+  const showClass = document.getElementById('filterClass').checked;
+  const showMethod = document.getElementById('filterMethod').checked;
+  const showField = document.getElementById('filterField').checked;
 
   if (!version || !mappingType || keyword.length < 3) {
     updateSearchStatus('MC版本、命名空间 和 关键字（最少3字符）为必填', true);

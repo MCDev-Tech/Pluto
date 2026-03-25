@@ -9,8 +9,19 @@ type SingleInfo struct {
 	Type      string
 }
 
-func PackClassInfo(name string) SingleInfo {
+func Signature2Class(name string) string {
+	if len(name) == 0 || strings.Contains(name, ".") {
+		return name
+	}
 	name = strings.ReplaceAll(name, "/", ".")
+	if name[0] == 'L' {
+		return name[1 : len(name)-1]
+	}
+	return name
+}
+
+func PackClassInfo(name string) SingleInfo {
+	name = Signature2Class(name)
 	return SingleInfo{
 		Name:      FullToClassName(name),
 		Class:     name,
@@ -20,6 +31,7 @@ func PackClassInfo(name string) SingleInfo {
 }
 
 func PackMethodInfo(name, class, signature string) SingleInfo {
+	class = Signature2Class(class)
 	return SingleInfo{
 		Name:      name,
 		Class:     class,
@@ -29,6 +41,7 @@ func PackMethodInfo(name, class, signature string) SingleInfo {
 }
 
 func PackFieldInfo(name, class, signature string) SingleInfo {
+	class = Signature2Class(class)
 	return SingleInfo{
 		Name:      name,
 		Class:     class,
